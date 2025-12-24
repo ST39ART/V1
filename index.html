@@ -1,0 +1,273 @@
+<div class="apt-calendar-wrap">
+  <div id="apt-calendar"></div>
+</div>
+
+<style>
+  /* общие правки чтобы элементы могли сжиматься и расчёт размеров включал padding */
+  * {
+    box-sizing: border-box;
+  }
+
+  /* === ОБЁРТКА (ЦЕНТРОВАНИЕ) === */
+  .apt-calendar-wrap {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* === КОНТЕЙНЕР КАЛЕНДАРЯ === */
+  #apt-calendar {
+    max-width: 720px; /* шире */
+    width: 100%;
+  }
+
+  /* делаем хедер гибким и ровным */
+  .apt-cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .apt-cal-title {
+    font-family: Oswald; /* замените на нужный шрифт */
+    font-size: 32px; /* опционально, размер шрифта */
+    font-weight: 200; /* light — поставьте 200/300/400 по необходимости */
+    text-transform: uppercase;
+  }
+  /* === СЕТКА === */
+  .apt-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px; /* было 14 */
+    text-align: center;
+    width: 100%;
+    /* гарантия, что строки будут достаточной высоты и не ломать раскладку */
+    grid-auto-rows: minmax(68px, auto);
+  }
+
+  /* подписи дней недели (маленькие) */
+  .apt-cal-grid > div > strong {
+    font-weight: 100; /* light — поставьте 200/300/400 по необходимости */
+    font-size: 20px; /* уменьшите/увеличьте размер */
+    letter-spacing: 0.02em;
+    color: inherit;
+  }
+
+  /* важно: разрешаем дочерним элементам грида сжиматься */
+  .apt-cal-grid > div {
+    min-width: 0;
+    padding-top: 20px;
+    font-weight: 200; /* light — поставьте 200/300/400 по необходимости */
+    font-size: 20px; /* уменьшите/увеличьте размер */
+    /* letter-spacing: 0.02em; */
+  }
+
+  /* === ЯЧЕЙКА ДНЯ === */
+  .apt-cal-day {
+    min-height: 68px; /* было 92 */
+    padding: 8px 6px; /* было 12 8 */
+    border-radius: 8px;
+    /* background: #f7f4ef; */
+    background: transparent; /* убираем заливку */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 14px;
+    /* чтобы ячейка занимала всю высоту сетки и корректно сжималась */
+    height: 100%;
+    min-width: 0;
+  }
+
+  /* === ЧИСЛО === */
+  .apt-cal-date {
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  /* === СТАТУС === */
+  .apt-cal-day.busy {
+    background: transparent; /* убираем заливку */
+    border: 2px solid #821d0e; /* рамка 2px того же цвета */
+    color: #821d0e; /* текст в цвет рамки */
+    box-sizing: border-box; /* чтобы border не ломал размеры */
+    border-radius: 8px;
+  }
+
+  .apt-cal-status {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .apt-cal-day.free {
+    background: #407b52;
+    /* background: rgba(10, 96, 36, 0.75); */
+    color: #fff;
+  }
+</style>
+
+<script>
+  /* ================= НАСТРОЙКИ ================= */
+  const calendarSettings = {
+    startWeekOnMonday: true,
+    fontFamily: "Oswald",
+    colorText: "#2E2E2E",
+  };
+
+  let currentDate = new Date();
+
+  /* ================= ICS URL ================= */
+  const icsUrl =
+    "https://api.allorigins.win/raw?url=" +
+    encodeURIComponent(
+      "https://calendar.google.com/calendar/ical/0bed3d19016b1f2911907ffe59a5989e401bac304b2df4367bded1b26b8fe362%40group.calendar.google.com/public/basic.ics"
+    );
+
+  /* ============== ХЕЛПЕРЫ ============== */
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const formatDate = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
+  const escapeHtml = (s) =>
+    String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  /* ================= ЗАГРУЗКА ICS ================= */
+  async function fetchICS(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("ICS не загрузился");
+    const text = await res.text();
+
+    const events = [];
+    const blocks = text.split("BEGIN:VEVENT").slice(1);
+
+    blocks.forEach((raw) => {
+      const ds = raw.match(/DTSTART.*:(\d{8})/);
+      const de = raw.match(/DTEND.*:(\d{8})/);
+      const summary = raw.match(/SUMMARY:(.*)/);
+
+      if (!ds || !summary) return;
+
+      const s = ds[1];
+      const start = new Date(
+        +s.slice(0, 4),
+        +s.slice(4, 6) - 1,
+        +s.slice(6, 8)
+      );
+
+      let end = start;
+      if (de) {
+        const e = de[1];
+        end = new Date(+e.slice(0, 4), +e.slice(4, 6) - 1, +e.slice(6, 8));
+        end.setDate(end.getDate() - 1); // FIX Google Calendar
+      }
+
+      let d = new Date(start);
+      while (d <= end) {
+        events.push({
+          date: formatDate(d.getFullYear(), d.getMonth() + 1, d.getDate()),
+          text: summary[1].toLowerCase(),
+        });
+        d.setDate(d.getDate() + 1);
+      }
+    });
+
+    return events;
+  }
+
+  /* ================= ПОСТРОЕНИЕ ================= */
+  function buildCalendar(events) {
+    const container = document.getElementById("apt-calendar");
+    if (!container) return;
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    const start = calendarSettings.startWeekOnMonday ? 1 : 0;
+    const shift = (firstDay.getDay() - start + 7) % 7;
+
+    // Map для быстрого поиска по дате
+    const eventsMap = new Map(events.map((e) => [e.date, e.text]));
+
+    // подписи дней недели (в зависимости от настройки startWeekOnMonday)
+    const weekLabelsMonFirst = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
+    const weekLabelsSunFirst = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    const weekLabels = calendarSettings.startWeekOnMonday
+      ? weekLabelsMonFirst
+      : weekLabelsSunFirst;
+
+    let html = `<div style="font-family:${calendarSettings.fontFamily};color:${calendarSettings.colorText}">`;
+
+    html += `
+      <div class="apt-cal-header">
+        <div class="apt-cal-nav" onclick="changeMonth(-1)">←</div>
+        <div class="apt-cal-title">
+          ${currentDate.toLocaleString("ru", { month: "long" })} ${year}
+        </div>
+        <div class="apt-cal-nav" onclick="changeMonth(1)">→</div>
+      </div>
+    `;
+
+    html += `<div class="apt-cal-grid">`;
+
+    weekLabels.forEach((d) => (html += `<div><strong>${d}</strong></div>`));
+
+    for (let i = 0; i < shift; i++) html += `<div></div>`;
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const dateStr = formatDate(year, month + 1, day);
+      const eventText = eventsMap.get(dateStr) || "";
+
+      let cls = "apt-cal-day";
+      let label = "";
+
+      if (eventText) {
+        if (eventText.includes("занято")) {
+          cls += " busy";
+          label = "Занято";
+        } else if (eventText.includes("свободно")) {
+          cls += " free";
+          const price = eventText.match(/(\d{3,6})/);
+          label = price ? `от ${escapeHtml(price[1])} ₽` : "Свободно";
+        }
+      }
+
+      html += `
+            <div class="${cls}">
+              <div class="apt-cal-date">${day}</div>
+              <div class="apt-cal-status">${label}</div>
+            </div>`;
+    }
+
+    // добавляем пустые ячейки чтобы заполнить последний ряд до 7 колонок
+    const totalCells = shift + lastDay.getDate();
+    const trailing = (7 - (totalCells % 7)) % 7;
+    for (let i = 0; i < trailing; i++) html += `<div></div>`;
+
+    container.innerHTML = html;
+  }
+
+  /* ================= НАВИГАЦИЯ ================= */
+  function changeMonth(step) {
+    currentDate.setMonth(currentDate.getMonth() + step);
+    buildCalendar(window.calendarEvents || []);
+  }
+
+  /* ================= ЗАПУСК ================= */
+  document.addEventListener("DOMContentLoaded", () => {
+    fetchICS(icsUrl)
+      .then((events) => {
+        window.calendarEvents = events;
+        buildCalendar(events);
+      })
+      .catch((err) => {
+        const el = document.getElementById("apt-calendar");
+        if (el)
+          el.innerHTML =
+            "<p style='text-align:center'>Календарь временно недоступен</p>";
+        console.error(err);
+      });
+  });
+</script>
