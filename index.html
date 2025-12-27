@@ -28,12 +28,14 @@
     justify-content: space-between;
     margin-bottom: 12px;
   }
+
   .apt-cal-title {
     font-family: Oswald; /* замените на нужный шрифт */
     font-size: 32px; /* опционально, размер шрифта */
     font-weight: 200; /* light — поставьте 200/300/400 по необходимости */
     text-transform: uppercase;
   }
+
   /* === СЕТКА === */
   .apt-cal-grid {
     display: grid;
@@ -59,7 +61,6 @@
     padding-top: 20px;
     font-weight: 200; /* light — поставьте 200/300/400 по необходимости */
     font-size: 20px; /* уменьшите/увеличьте размер */
-    /* letter-spacing: 0.02em; */
   }
 
   /* === ЯЧЕЙКА ДНЯ === */
@@ -67,7 +68,6 @@
     min-height: 68px; /* было 92 */
     padding: 8px 6px; /* было 12 8 */
     border-radius: 8px;
-    /* background: #f7f4ef; */
     background: transparent; /* убираем заливку */
     display: flex;
     flex-direction: column;
@@ -80,7 +80,7 @@
 
   /* === ЧИСЛО === */
   .apt-cal-date {
-    font-weight: 600;
+    font-weight: 500;
     font-size: 15px;
     display: inline-block;
     width: fit-content;
@@ -98,37 +98,35 @@
 
   .apt-cal-status {
     font-size: 12px;
+    font-weight: 400; /* вес шрифта занято/свободно поставьте 200/300/400 по необходимости */
     line-height: 1.2;
   }
 
   .apt-cal-day.free {
-    background: #407b52;
-    /* background: rgba(10, 96, 36, 0.75); */
-    color: #fff;
+    background: #005000;
+    color: #f7f4ef;
   }
+
   /* === СЕГОДНЯШНЯЯ ДАТА === */
   .apt-cal-day.today {
     background: none; /* убираем заливку с ячейки сегодняшней даты */
-    color: #407b52; /* текст в цвет рамки */
-    border: 2px solid #407b52; /* рамка для выделения */
+    color: #005000; /* текст в цвет рамки */
+    border: 2px solid #005000; /* рамка для выделения */
     font-weight: bold; /* жирный шрифт для числа */
   }
+
   /* Стиль для текста "СЕГОДНЯ" */
   .apt-cal-day.today .apt-cal-status {
-    font-size: 11px;
-    font-weight: 300;
+    font-size: 12px;
+    font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
 
-  /* .apt-cal-day.today .apt-cal-date {
-    font-weight: 700; /* дополнительная жирность для числа
-  } */
-
   /* === ПРОШЕДШИЕ ДАТЫ === */
   .apt-cal-day.past .apt-cal-date {
     position: relative;
-    opacity: 0.8;
+    opacity: 0.6;
   }
 
   /* Зачеркивание для всех прошедших дат, включая busy и free */
@@ -145,15 +143,12 @@
     opacity: 0.4;
     transform: translateY(-50%);
   }
+
   /* === ПРОШЕДШИЕ ДАТЫ - ОТМЕНА СТИЛЕЙ BUSY И FREE === */
-  .apt-cal-day.past.busy {
+  .apt-cal-day.past.busy,
+  .apt-cal-day.past.free {
     background: transparent;
     border: none; /* убираем рамку */
-    color: inherit; /* возвращаем обычный цвет текста */
-  }
-
-  .apt-cal-day.past.free {
-    background: transparent; /* убираем зеленый фон */
     color: inherit; /* возвращаем обычный цвет текста */
   }
 
@@ -249,11 +244,13 @@
     const eventsMap = new Map(events.map((e) => [e.date, e.text]));
 
     // подписи дней недели (в зависимости от настройки startWeekOnMonday)
-    const weekLabelsMonFirst = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
-    const weekLabelsSunFirst = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
     const weekLabels = calendarSettings.startWeekOnMonday
-      ? weekLabelsMonFirst
-      : weekLabelsSunFirst;
+      ? ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+      : ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+
+    // Получаем сегодняшнюю дату один раз перед циклом (оптимизация)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // сбрасываем время для корректного сравнения
 
     let html = `<div style="font-family:${calendarSettings.fontFamily};color:${calendarSettings.colorText}">`;
 
@@ -280,10 +277,6 @@
       let cls = "apt-cal-day";
       let label = "";
 
-      // Проверка на сегодняшнюю дату
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // сбрасываем время для корректного сравнения
-
       const currentDayDate = new Date(year, month, day);
       currentDayDate.setHours(0, 0, 0, 0);
 
@@ -298,33 +291,21 @@
       if (isToday) {
         cls += " today";
         label = "СЕГОДНЯ"; // устанавливаем текст для сегодняшней даты
-      }
+      } else {
+        // Проверка на прошедшую дату применяется ко всем прошедшим датам
+        if (isPast) {
+          cls += " past";
+        }
 
-      // Проверка на прошедшую дату применяется ко всем прошедшим датам
-      if (isPast && !isToday) {
-        // не добавляем past к today
-        cls += " past";
-      }
-
-      // Проверяем статус только если это НЕ сегодняшняя дата
-      if (!isToday) {
-        if (eventText) {
-          if (eventText.includes("занято")) {
-            cls += " busy";
-            label = "Занято";
-          } else if (eventText.includes("свободно")) {
-            cls += " free";
-            const price = eventText.match(/(\d{3,6})/);
-            label = price ? `от ${escapeHtml(price[1])} ₽` : "Свободно";
-          } else {
-            // Если есть eventText, но он не содержит "занято" или "свободно"
-            cls += " busy";
-            label = "Занято";
-          }
+        // Определяем статус: по умолчанию "занято"
+        if (eventText.includes("свободно")) {
+          cls += " free";
+          const price = eventText.match(/(\d{3,6})/);
+          label = price ? `от ${escapeHtml(price[1])} ₽` : "Свободно";
         } else {
-          // Если нет eventText вообще - применяем стиль занято
+          // Если нет eventText или он не содержит "свободно" - применяем стиль занято
           cls += " busy";
-          label = "Занято";
+          label = "ЗАНЯТО";
         }
       }
 
@@ -334,6 +315,7 @@
           <div class="apt-cal-status">${label}</div>
         </div>`;
     }
+
     // добавляем пустые ячейки чтобы заполнить последний ряд до 7 колонок
     const totalCells = shift + lastDay.getDate();
     const trailing = (7 - (totalCells % 7)) % 7;
