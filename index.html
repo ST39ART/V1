@@ -82,6 +82,9 @@
   .apt-cal-date {
     font-weight: 600;
     font-size: 15px;
+    display: inline-block;
+    width: fit-content;
+    margin: 0 auto; /* центрирует элемент */
   }
 
   /* === СТАТУС === */
@@ -105,17 +108,35 @@
   }
   /* === СЕГОДНЯШНЯЯ ДАТА === */
   .apt-cal-day.today {
-    border: 2px solid #ff0000; /* рамка для выделения */
+    background: none; /* убираем заливку с ячейки сегодняшней даты */
+    color: #407b52; /* текст в цвет рамки */
+    border: 2px solid #407b52; /* рамка для выделения */
     font-weight: bold; /* жирный шрифт для числа */
   }
 
-  .apt-cal-day.today .apt-cal-date {
-    font-weight: 700; /* дополнительная жирность для числа */
-  }
+  /* .apt-cal-day.today .apt-cal-date {
+    font-weight: 700; /* дополнительная жирность для числа
+  } */
+
   /* === ПРОШЕДШИЕ ДАТЫ === */
   .apt-cal-day.past .apt-cal-date {
-    text-decoration: line-through;
-    opacity: 0.6; /* опционально - сделать немного прозрачнее */
+    position: relative;
+    opacity: 0.8;
+  }
+
+  /* Зачеркивание для всех прошедших дат, включая busy и free */
+  .apt-cal-day.past .apt-cal-date::before,
+  .apt-cal-day.past.busy .apt-cal-date::before,
+  .apt-cal-day.past.free .apt-cal-date::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: -8px;
+    width: calc(100% + 16px);
+    height: 2px;
+    background-color: currentColor;
+    opacity: 0.4;
+    transform: translateY(-50%);
   }
 </style>
 
@@ -133,7 +154,7 @@
   const icsUrl =
     "https://api.allorigins.win/raw?url=" +
     encodeURIComponent(
-      "https://calendar.google.com/calendar/ical/0bed3d19016b1f2911907ffe59a5989e401bac304b2df4367bded1b26b8fe362%40group.calendar.google.com/public/basic.ics"
+      "https://calendar.google.com/calendar/ical/0bed3d19016b1f2911907ffe59a5989e401bac304b2df4367bded1b26b8fe362@group.calendar.google.com/public/basic.ics"
     );
 
   /* ============== ХЕЛПЕРЫ ============== */
@@ -253,7 +274,10 @@
 
       if (isToday) {
         cls += " today";
-      } else if (isPast) {
+      }
+
+      // Проверка на прошедшую дату применяется ко всем прошедшим датам
+      if (isPast) {
         cls += " past";
       }
 
@@ -279,6 +303,7 @@
     const trailing = (7 - (totalCells % 7)) % 7;
     for (let i = 0; i < trailing; i++) html += `<div></div>`;
 
+    html += `</div></div>`; // закрываем apt-cal-grid и внешний div
     container.innerHTML = html;
   }
 
