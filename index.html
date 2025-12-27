@@ -103,6 +103,20 @@
     /* background: rgba(10, 96, 36, 0.75); */
     color: #fff;
   }
+  /* === СЕГОДНЯШНЯЯ ДАТА === */
+  .apt-cal-day.today {
+    border: 2px solid #ff0000; /* рамка для выделения */
+    font-weight: bold; /* жирный шрифт для числа */
+  }
+
+  .apt-cal-day.today .apt-cal-date {
+    font-weight: 700; /* дополнительная жирность для числа */
+  }
+  /* === ПРОШЕДШИЕ ДАТЫ === */
+  .apt-cal-day.past .apt-cal-date {
+    text-decoration: line-through;
+    opacity: 0.6; /* опционально - сделать немного прозрачнее */
+  }
 </style>
 
 <script>
@@ -170,7 +184,6 @@
         d.setDate(d.getDate() + 1);
       }
     });
-
     return events;
   }
 
@@ -223,6 +236,27 @@
       let cls = "apt-cal-day";
       let label = "";
 
+      // Проверка на сегодняшнюю дату
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // сбрасываем время для корректного сравнения
+
+      const currentDayDate = new Date(year, month, day);
+      currentDayDate.setHours(0, 0, 0, 0);
+
+      const isToday =
+        year === today.getFullYear() &&
+        month === today.getMonth() &&
+        day === today.getDate();
+
+      // Проверка на прошедшую дату (до сегодняшней)
+      const isPast = currentDayDate < today;
+
+      if (isToday) {
+        cls += " today";
+      } else if (isPast) {
+        cls += " past";
+      }
+
       if (eventText) {
         if (eventText.includes("занято")) {
           cls += " busy";
@@ -235,12 +269,11 @@
       }
 
       html += `
-            <div class="${cls}">
-              <div class="apt-cal-date">${day}</div>
-              <div class="apt-cal-status">${label}</div>
-            </div>`;
+        <div class="${cls}">
+          <div class="apt-cal-date">${day}</div>
+          <div class="apt-cal-status">${label}</div>
+        </div>`;
     }
-
     // добавляем пустые ячейки чтобы заполнить последний ряд до 7 колонок
     const totalCells = shift + lastDay.getDate();
     const trailing = (7 - (totalCells % 7)) % 7;
