@@ -113,6 +113,13 @@
     border: 2px solid #407b52; /* рамка для выделения */
     font-weight: bold; /* жирный шрифт для числа */
   }
+  /* Стиль для текста "СЕГОДНЯ" */
+  .apt-cal-day.today .apt-cal-status {
+    font-size: 11px;
+    font-weight: 300;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
 
   /* .apt-cal-day.today .apt-cal-date {
     font-weight: 700; /* дополнительная жирность для числа
@@ -137,6 +144,22 @@
     background-color: currentColor;
     opacity: 0.4;
     transform: translateY(-50%);
+  }
+  /* === ПРОШЕДШИЕ ДАТЫ - ОТМЕНА СТИЛЕЙ BUSY И FREE === */
+  .apt-cal-day.past.busy {
+    background: transparent;
+    border: none; /* убираем рамку */
+    color: inherit; /* возвращаем обычный цвет текста */
+  }
+
+  .apt-cal-day.past.free {
+    background: transparent; /* убираем зеленый фон */
+    color: inherit; /* возвращаем обычный цвет текста */
+  }
+
+  /* Скрываем статус (Занято/Свободно) для прошедших дат */
+  .apt-cal-day.past .apt-cal-status {
+    display: none;
   }
 </style>
 
@@ -274,21 +297,34 @@
 
       if (isToday) {
         cls += " today";
+        label = "СЕГОДНЯ"; // устанавливаем текст для сегодняшней даты
       }
 
       // Проверка на прошедшую дату применяется ко всем прошедшим датам
-      if (isPast) {
+      if (isPast && !isToday) {
+        // не добавляем past к today
         cls += " past";
       }
 
-      if (eventText) {
-        if (eventText.includes("занято")) {
+      // Проверяем статус только если это НЕ сегодняшняя дата
+      if (!isToday) {
+        if (eventText) {
+          if (eventText.includes("занято")) {
+            cls += " busy";
+            label = "Занято";
+          } else if (eventText.includes("свободно")) {
+            cls += " free";
+            const price = eventText.match(/(\d{3,6})/);
+            label = price ? `от ${escapeHtml(price[1])} ₽` : "Свободно";
+          } else {
+            // Если есть eventText, но он не содержит "занято" или "свободно"
+            cls += " busy";
+            label = "Занято";
+          }
+        } else {
+          // Если нет eventText вообще - применяем стиль занято
           cls += " busy";
           label = "Занято";
-        } else if (eventText.includes("свободно")) {
-          cls += " free";
-          const price = eventText.match(/(\d{3,6})/);
-          label = price ? `от ${escapeHtml(price[1])} ₽` : "Свободно";
         }
       }
 
@@ -314,7 +350,7 @@
   }
 
   /* ================= ЗАПУСК ================= */
-  document.addEventListener("DOMContentLoaded", () => {
+  function loadCalendar() {
     fetchICS(icsUrl)
       .then((events) => {
         window.calendarEvents = events;
@@ -327,5 +363,12 @@
             "<p style='text-align:center'>Календарь временно недоступен</p>";
         console.error(err);
       });
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadCalendar(); // загружаем сразу при загрузке страницы
+
+    // Обновляем календарь каждые 5 минут (300000 миллисекунд)
+    setInterval(loadCalendar, 5 * 60 * 1000);
   });
 </script>
