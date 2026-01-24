@@ -36,6 +36,13 @@
     text-transform: uppercase;
   }
 
+  /* свой CSS для .apt-cal-nav */
+  .apt-cal-nav {
+    font-size: 24px; /* Например, 24px */
+    cursor: pointer;
+    padding: 5px;
+  }
+
   /* === СЕТКА === */
   .apt-cal-grid {
     display: grid;
@@ -172,7 +179,7 @@
   const icsUrl =
     "https://api.allorigins.win/raw?url=" +
     encodeURIComponent(
-      "https://calendar.google.com/calendar/ical/0bed3d19016b1f2911907ffe59a5989e401bac304b2df4367bded1b26b8fe362@group.calendar.google.com/public/basic.ics"
+      "https://calendar.google.com/calendar/ical/0bed3d19016b1f2911907ffe59a5989e401bac304b2df4367bded1b26b8fe362@group.calendar.google.com/public/basic.ics",
     );
 
   /* ============== ХЕЛПЕРЫ ============== */
@@ -204,7 +211,7 @@
       const start = new Date(
         +s.slice(0, 4),
         +s.slice(4, 6) - 1,
-        +s.slice(6, 8)
+        +s.slice(6, 8),
       );
 
       let end = start;
@@ -256,11 +263,11 @@
 
     html += `
       <div class="apt-cal-header">
-        <div class="apt-cal-nav" onclick="changeMonth(-1)">←</div>
+        <div class="apt-cal-nav" onclick="changeMonth(-1)">‹</div>
         <div class="apt-cal-title">
           ${currentDate.toLocaleString("ru", { month: "long" })} ${year}
         </div>
-        <div class="apt-cal-nav" onclick="changeMonth(1)">→</div>
+        <div class="apt-cal-nav" onclick="changeMonth(1)">›</div>
       </div>
     `;
 
